@@ -1,0 +1,57 @@
+#!/bin/bash
+
+# Grammatical evolution parameters
+POPULATION_SIZE="2000"
+GENERATIONS="100"
+EXTRA_AGE_FLAGS="-I random(10-99) -x 0.9 -M bit,codon -m 0.25,0.25"
+
+# Check for argument
+if [ -z "$1" ]
+then
+  echo "Usage: ./GERNI <filename> [plot]"
+  exit
+fi
+
+# Run GERNI
+echo ""
+echo "Running GERNI..."
+
+GERNI_RAW_OUTPUT=$(./GERNI4CPP -A odereg\($1\) -p $POPULATION_SIZE -g $GENERATIONS $EXTRA_AGE_FLAGS)
+ODE=$(echo "$GERNI_RAW_OUTPUT" | egrep -o "dy\[0\] := .*$")
+
+if [ -z "$ODE" ]
+then
+  echo ""
+  echo "================================================================================"
+  echo "*** GERNI: No ODE system was found. Here's the full output:"
+  echo "================================================================================"
+  echo "$GERNI_RAW_OUTPUT"
+  echo ""
+  exit
+fi
+
+# Show each equation in its own line: http://stackoverflow.com/a/918931
+echo ""
+echo "================================================================================"
+echo "*** GERNI: Here's the best ODE that was found:"
+echo "================================================================================"
+echo ""
+
+IFS=';' read -ra ODE_ARRAY <<< "$ODE"
+
+for CUR_ODE in "${ODE_ARRAY[@]}"; do
+  # Trim whitespace: http://stackoverflow.com/a/3232433
+  TRIMED_ODE=$(echo -e "$CUR_ODE" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+  echo "$TRIMED_ODE"
+done
+
+
+# Plot result
+if [ "$2" = "plot" ]
+then
+  echo ""
+  echo "Plotting..."
+  echo "$ODE" | ./GERNI4CPP plot "$1"
+fi
+
+echo ""
